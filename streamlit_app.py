@@ -967,33 +967,150 @@ if st.session_state.stats and st.session_state.stats.get('status') == 'success':
             """)
     
     # TAB 3: Extend Pipeline
+    # TAB 3: Extend Pipeline - ENHANCED VERSION
     with tab3:
         st.markdown("### ➕ Custom Pipeline Stages")
-        
+        st.markdown(
+            "Add custom transformation stages to your pipeline. Choose where each stage should execute in the data flow.")
+
+        # Form to add new stage
         with st.form("add_stage_form"):
-            stage_name = st.text_input("Stage name", placeholder="e.g., Data Cleaning")
-            stage_desc = st.text_area("Description", placeholder="e.g., Remove duplicates, normalize text...", height=80)
-            submit = st.form_submit_button("+ Add Stage", use_container_width=True)
-            
+            col_form1, col_form2 = st.columns(2)
+
+            with col_form1:
+                stage_name = st.text_input(
+                    "Stage Name",
+                    placeholder="e.g., Data Cleaning",
+                    help="Give your stage a descriptive name"
+                )
+
+            with col_form2:
+                stage_position = st.selectbox(
+                    "Pipeline Position",
+                    ["After Ingestion", "After Validation", "After Kafka Production", "Pre-Analytics"],
+                    help="Where should this stage execute in the pipeline?"
+                )
+
+            stage_desc = st.text_area(
+                "Description",
+                placeholder="e.g., Remove duplicates, normalize text, handle nulls...",
+                height=100,
+                help="Explain what this transformation stage does"
+            )
+
+            # Position mapping
+            position_mapping = {
+                "After Ingestion": "🌐 Ingestion Layer",
+                "After Validation": "✓ Validation Layer",
+                "After Kafka Production": "📨 Message Broker",
+                "Pre-Analytics": "📊 Analytics Layer"
+            }
+
+            submit = st.form_submit_button("➕ Add Stage to Pipeline", use_container_width=True)
+
             if submit and stage_name:
                 st.session_state.custom_stages.append({
                     "name": stage_name,
-                    "description": stage_desc
+                    "description": stage_desc,
+                    "position": stage_position,
+                    "position_label": position_mapping[stage_position],
+                    "id": len(st.session_state.custom_stages) + 1
                 })
-                st.success(f"✓ Stage '{stage_name}' added!")
+                st.success(f"✅ Stage '{stage_name}' added to {position_mapping[stage_position]}!", icon="✨")
                 st.rerun()
-        
+
+        # Display added stages
         if st.session_state.custom_stages:
-            st.markdown("### 🔧 Your Custom Stages")
-            for i, stage in enumerate(st.session_state.custom_stages, 1):
-                with st.expander(f"{i}. {stage['name']}"):
-                    st.markdown(f"**Description:** {stage['description']}")
-                    if st.button(f"Remove {stage['name']}", key=f"remove_{i}"):
-                        st.session_state.custom_stages.pop(i-1)
-                        st.rerun()
+            st.markdown("---")
+            st.markdown("### 🔧 Your Custom Pipeline Stages")
+
+            # Group stages by position
+            stages_by_position = {}
+            for stage in st.session_state.custom_stages:
+                pos = stage['position']
+                if pos not in stages_by_position:
+                    stages_by_position[pos] = []
+                stages_by_position[pos].append(stage)
+
+            # Display positions in order
+            position_order = ["After Ingestion", "After Validation", "After Kafka Production", "Pre-Analytics"]
+            position_icons = {
+                "After Ingestion": "🌐",
+                "After Validation": "✓",
+                "After Kafka Production": "📨",
+                "Pre-Analytics": "📊"
+            }
+
+            for position in position_order:
+                if position in stages_by_position:
+                    icon = position_icons.get(position, "⚙️")
+                    st.markdown(f"#### {icon} {position}")
+
+                    for i, stage in enumerate(stages_by_position[position]):
+                        with st.container():
+                            col_stage, col_remove = st.columns([4, 1])
+
+                            with col_stage:
+                                st.markdown(f"**{i + 1}. {stage['name']}**")
+                                st.markdown(f"__{stage['position_label']}__")
+                                st.markdown(f"📝 {stage['description']}")
+
+                            with col_remove:
+                                if st.button("🗑️", key=f"remove_{stage['id']}", help="Remove this stage"):
+                                    st.session_state.custom_stages.remove(stage)
+                                    st.success("Stage removed!", icon="✅")
+                                    st.rerun()
+
+            # Show updated data flow with custom stages
+            st.markdown("---")
+            st.markdown("### 📊 Updated Data Flow with Custom Stages")
+
+            # Build dynamic flow diagram
+            flow_html = '<div class="flow-diagram">'
+            flow_html += '<span class="flow-item">📁 Source</span>'
+            flow_html += '<span class="arrow">→</span>'
+            flow_html += '<span class="flow-item">🌐 Ingest</span>'
+
+            # Add After Ingestion stages
+            if "After Ingestion" in stages_by_position:
+                for stage in stages_by_position["After Ingestion"]:
+                    flow_html += '<span class="arrow">→</span>'
+                    flow_html += f'<span class="flow-item" style="background: rgba(16, 185, 129, 0.15); border-color: #10b981;">⚙️ {stage["name"][:12]}</span>'
+
+            flow_html += '<span class="arrow">→</span>'
+            flow_html += '<span class="flow-item">✓ Validate</span>'
+
+            # Add After Validation stages
+            if "After Validation" in stages_by_position:
+                for stage in stages_by_position["After Validation"]:
+                    flow_html += '<span class="arrow">→</span>'
+                    flow_html += f'<span class="flow-item" style="background: rgba(16, 185, 129, 0.15); border-color: #10b981;">⚙️ {stage["name"][:12]}</span>'
+
+            flow_html += '<span class="arrow">→</span>'
+            flow_html += '<span class="flow-item">📨 Kafka</span>'
+
+            # Add After Kafka stages
+            if "After Kafka Production" in stages_by_position:
+                for stage in stages_by_position["After Kafka Production"]:
+                    flow_html += '<span class="arrow">→</span>'
+                    flow_html += f'<span class="flow-item" style="background: rgba(16, 185, 129, 0.15); border-color: #10b981;">⚙️ {stage["name"][:12]}</span>'
+
+            flow_html += '<span class="arrow">→</span>'
+            flow_html += '<span class="flow-item">📊 Analytics</span>'
+
+            # Add Pre-Analytics stages
+            if "Pre-Analytics" in stages_by_position:
+                for stage in stages_by_position["Pre-Analytics"]:
+                    flow_html += '<span class="arrow">→</span>'
+                    flow_html += f'<span class="flow-item" style="background: rgba(16, 185, 129, 0.15); border-color: #10b981;">⚙️ {stage["name"][:12]}</span>'
+
+            flow_html += '<span class="arrow">→</span>'
+            flow_html += '<span class="flow-item">📈 Results</span>'
+            flow_html += '</div>'
+
+            st.markdown(flow_html, unsafe_allow_html=True)
         else:
-            st.info("No custom stages yet. Create one to extend your pipeline!")
-    
+            st.info("📌 No custom stages yet. Create one above to extend your pipeline dynamically!", icon="ℹ️")
     # TAB 4: Data Analysis
     with tab4:
         st.markdown("### 📈 Data Classification & Insights")
