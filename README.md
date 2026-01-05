@@ -24,7 +24,9 @@ An interactive tool to simulate and visualize data engineering pipelines efficie
 ---
 
 ## Screenshots
+![Alt text for screen readers](/overview.png)
 
+![Alt text for screen readers](/Screenshot%202026-01-05%20at%209.44.07%E2%80%AFAM.png)
 
 ---
 
